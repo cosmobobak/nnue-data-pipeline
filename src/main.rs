@@ -36,11 +36,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Vec<_>>();
 
+    // create directory for output files in working directory
+    let output_folder = std::path::Path::new("output");
+    if !output_folder.exists() {
+        std::fs::create_dir(output_folder)?;
+    }
+
     // convert and shuffle each data file, one-by-one
     for data_file in &data_files {
         println!("operating on {}", data_file.display());
-        let unshuffled_binary_output = data_file.with_extension("unshuf-bin");
-        let shuffled_binary_output = data_file.with_extension("bin");
+        let unshuffled_binary_output = data_file.file_name().ok_or("no data file name")?;
+        let shuffled_binary_output = data_file.file_name().ok_or("no data file name")?;
+        let unshuffled_binary_output = output_folder.join(unshuffled_binary_output).with_extension("unshuf-bin");
+        let shuffled_binary_output = output_folder.join(shuffled_binary_output).with_extension("bin");
         // convert to binary format using marlinflow-utils
         let mut command = std::process::Command::new(&marlinflow_utils);
         command.arg("txt-to-data");
@@ -65,6 +73,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if !status.success() {
             return Err(format!("failed to shuffle {}", data_file.display()).into());
         }
+        // remove unshuffled binary file
+        std::fs::remove_file(&unshuffled_binary_output)?;
     }
 
     // merge all shuffled binary files into one
