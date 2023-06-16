@@ -47,8 +47,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("operating on {}", data_file.display());
         let unshuffled_binary_output = data_file.file_name().ok_or("no data file name")?;
         let shuffled_binary_output = data_file.file_name().ok_or("no data file name")?;
-        let unshuffled_binary_output = output_folder.join(unshuffled_binary_output).with_extension("unshuf-bin");
-        let shuffled_binary_output = output_folder.join(shuffled_binary_output).with_extension("bin");
+        let unshuffled_binary_output = output_folder
+            .join(unshuffled_binary_output)
+            .with_extension("unshuf-bin");
+        let shuffled_binary_output = output_folder
+            .join(shuffled_binary_output)
+            .with_extension("bin");
         // convert to binary format using marlinflow-utils
         let mut command = std::process::Command::new(&marlinflow_utils);
         command.arg("txt-to-data");
@@ -87,10 +91,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut command = std::process::Command::new(&marlinflow_utils);
     command.arg("interleave");
-    for data_file in &data_files {
-        let shuffled_binary_output = data_file.with_extension("bin");
-        command.arg(&shuffled_binary_output);
-    }
+    std::fs::read_dir(output_folder)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.is_file() && path.extension().map(|ext| ext == "bin") == Some(true) {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .for_each(|path| {
+            command.arg(path);
+        });
     command.arg("--output");
     // output filename is same as data folder name
     let output_filename = data_folder.file_name().ok_or("no data folder name")?;
